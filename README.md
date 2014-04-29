@@ -1,6 +1,5 @@
-===============================
-
 SCORM score distributions report for Moodle
+===============================
 
 Installation Instruction
 =====================
