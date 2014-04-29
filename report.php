@@ -1,5 +1,5 @@
 <?php
-// This file is part of SCORM trends report for Moodle
+// This file is part of the 
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 /**
- * Core Report class of graphs reporting plugin
+ * Strings used by the trends scorm report plugin
  *
- * @package    scormreport_trends
- * @copyright  2013 Ankit Kumar Agarwal
+ * @package    scormreport_score_distributions
+ * @copyright  2014 Newcastle University, based on work by Ankit Kumar Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
-require_once('reportlib.php');
 
 require_once($CFG->dirroot.'/lib/graphlib.php');
 
@@ -71,37 +70,35 @@ class scorm_trends_report extends scorm_default_report {
 
 		$sqlargs = array_merge($this->params, array($sco->id));
 		$attempts = $DB->get_records_sql($select.$from.$where, $sqlargs);
-		// Determine maximum number to loop through.
-		$loop = get_sco_question_count($sco->id, $attempts);
 
-		for ($i = 0; $i < $loop; $i++) {
-			$tabledata[] = array(
-				'type' => '',
-				'id' => '',
-				'result' => array());
-		}
 		foreach ($attempts as $attempt) {
 			if ($trackdata = scorm_get_tracks($sco->id, $attempt->userid, $attempt->attempt)) {
 				foreach ($trackdata as $element => $value) {
 					if (preg_match('/^cmi.interactions.(\d+)/',$element,$matches)) {
 						$i = $matches[1];
-						if(preg_match('/.type$/',$element)) {
-							$tabledata[$i]['type'] = $value;
-						} else if (preg_match('/^cmi.interactions.\d+.id$/',$element)) {
-							$tabledata[$i]['id'] = $value;
-						} else if (preg_match('/.result$/',$element)) {
-							if (isset($tabledata[$i]['result'][$value])) {
-								$tabledata[$i]['result'][$value]++;
+						if(!isset($data[$i])) {
+							$data[$i] = array(
+								'type' => '',
+								'id' => '',
+								'result' => array());
+						}
+						if($element=="cmi.interactions.$i.type") {
+							$data[$i]['type'] = $value;
+						} else if($element=="cmi.interactions.$i.id") {
+							$data[$i]['id'] = $value;
+						} else if($element=="cmi.interactions.$i.result") {
+							if (isset($data[$i]['result'][$value])) {
+								$data[$i]['result'][$value]++;
 							} else {
-								$tabledata[$i]['result'][$value] = 1;
+								$data[$i]['result'][$value] = 1;
 							}
 						}
 					}
 				}
 			}
-		} // End of foreach loop of attempts.
+		}
 
-		return $tabledata;
+		return $data;
 	}
 
     /**
