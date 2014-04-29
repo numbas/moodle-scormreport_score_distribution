@@ -36,18 +36,16 @@ function get_sco_question_count($scoid) {
     $select = "scoid = ? AND ";
     $select .= $DB->sql_like("element", "?", false);
     $params[] = $scoid;
-    $params[] = "cmi.interactions_%.id";
+    $params[] = "cmi.interactions.%.id";
     $rs = $DB->get_recordset_select("scorm_scoes_track", $select, $params, 'element');
-    $keywords = array("cmi.interactions_", ".id");
+    $keywords = array("cmi.interactions.", ".id");
     if ($rs->valid()) {
         foreach ($rs as $record) {
             $num = trim(str_ireplace($keywords, '', $record->element));
             if (is_numeric($num) && $num > $count) {
-                $count = $num;
+                $count = $num+1;
             }
         }
-        // Done as interactions start at 0 (do only if we have something to report).
-        $count++;
     }
     $rs->close(); // closing recordset
     return $count;

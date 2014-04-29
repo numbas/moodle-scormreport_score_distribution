@@ -21,11 +21,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
-$string['data'] = 'Data';
-$string['element'] = 'Elements';
-$string['freq'] = 'Frequency';
-$string['questioncount'] = 'Question count';
-$string['questionfreq'] = 'Question {$a}';
-$string['pluginname'] = 'Question trends';
-$string['value'] = 'Value';
+$string['pluginname'] = 'Score distributions';
+$string['interactionheader'] = 'Interaction';
+$string['interaction'] = 'Interaction {$a}';
+$string['type'] = 'Type';
+$string['results'] = 'Score distribution';
