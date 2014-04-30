@@ -34,3 +34,5 @@ $string['numcomplete'] = '{$a} complete';
 $string['meanscore'] = 'Mean score: {$a}';
 $string['interactionssummary'] = 'Interactions summary';
 $string['scoheading'] = 'SCO: {$a}';
+$string['percentexceeding'] = '% of attempts achieving this score';
+$string['score'] = 'Score';

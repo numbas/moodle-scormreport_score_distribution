@@ -227,23 +227,23 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
 					$score_frequencies = group($attemptdata['total_scores']);
 					ksort($score_frequencies);
+					$percent_complete = (int)(100*$attemptdata['numcomplete']/$attemptdata['numattempts']);
 ?>
-	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?>.</p>
+	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?> (<?php echo $percent_complete ?>%).</p>
 	<p><?php echo get_string('meanscore','scormreport_scoredistribution',number_format(array_mean($attemptdata['total_scores']),2,'.','')); ?></p>
-	<?php echo $OUTPUT->heading('Score distribution',4); ?>
-	<p>Graph of cumulative score distribution</p>
+	<?php echo $OUTPUT->heading(get_string('results','scormreport_scoredistribution'),4); ?>
 	<div><?php 
 					fill_axis_increments($score_frequencies);
 					ksort($score_frequencies);
 					$x_data = array_keys($score_frequencies);
 					$y_data = array_values($score_frequencies);
-					$sum = 0;
+					$sum = $attemptdata['numattempts'];
 					foreach($y_data as $i => $y) {
-						$sum += $y;
 						$y_data[$i] = $sum;
+						$sum -= $y;
 					}
 					foreach($y_data as $i => $y) {
-						$y_data[$i] *= 100/$sum;
+						$y_data[$i] *= 100/$attemptdata['numattempts'];
 					}
 					$chart = new graph(800,300);
 					$chart->x_data = $x_data;
@@ -253,7 +253,9 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					$chart->parameter = array_merge($chart->parameter,array(
 						'title' => '',
 						'shadow' => 'none',
-						'x_label_angle'=>0,
+						'x_label_angle'=> 0,
+						'y_label_left' => get_string('percentexceeding','scormreport_scoredistribution'),
+						'x_label' => get_string('score','scormreport_scoredistribution'),
 						'y_min_left' => 0,
 						'y_max_left' => max($y_data),
 						'y_axis_gridlines' => max(2,min(max($y_data),6)),
