@@ -258,7 +258,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 						'x_label' => get_string('score','scormreport_scoredistribution'),
 						'y_min_left' => 0,
 						'y_max_left' => max($y_data),
-						'y_axis_gridlines' => max(2,min(max($y_data),6)),
+						'y_axis_gridlines' => 21,
 						'x_axis_gridlines' => 10,
 						'xDecimal' => 0
 					));
