@@ -51,15 +51,19 @@ function bar_chart($x_data, $y_data, $settings) {
 	$barchart = new graph(min(400,count($x_data)*60+60),150);
 	$barchart->parameter = array_merge($barchart->parameter,array('shadow'=>'none','x_label_angle'=>0,'x_grid'=>'none'),$settings);
 
+	foreach($x_data as $i => $val) {
+		$x_data[$i] = number_format($val,2,'.','');
+	}
+	foreach($y_data as $i => $val) {
+		$y_data[$i] = 100*$val/count($y_data);
+	}
 	$barchart->x_data = $x_data;
 	$barchart->y_data['bars'] = $y_data;
 	$barchart->y_format['bars'] = array('bar' => 'fill', 'colour' => 'blue', 'shadow_offset' => 0);
 	$barchart->y_order = array('bars');
-	$y_min = min($y_data);
-	$y_max = max($y_data);
-	$barchart->parameter['y_axis_gridlines'] = max(2,min($y_max-$y_min,6));
+	$barchart->parameter['y_axis_gridlines'] = 5;
 	$barchart->parameter['y_min_left'] = 0;
-	$barchart->parameter['y_max_left'] = $y_max;
+	$barchart->parameter['y_max_left'] = 100;
 	return draw_graph($barchart);
 }
 
@@ -307,7 +311,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 						foreach ($tabledata as $interaction => $rowinst) {
 							$sum = $rowinst['result'];
 							ksort($sum);
-							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>'Result','y_label_left'=>'Frequency', 'title' => ""));
+							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>get_string('result','scormreport_scoredistribution'),'y_label_left'=>get_string('frequencypercent','scormreport_scoredistribution'), 'title' => ""));
 
 							$table->add_data(array(
 								$rowinst['id'],

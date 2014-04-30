@@ -36,3 +36,5 @@ $string['interactionssummary'] = 'Interactions summary';
 $string['scoheading'] = 'SCO: {$a}';
 $string['percentexceeding'] = '% of attempts achieving this score';
 $string['score'] = 'Score';
+$string['frequencypercent'] = 'Frequency (%)';
+$string['result'] = 'Result';
