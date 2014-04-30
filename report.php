@@ -165,6 +165,23 @@ class scorm_scoredistribution_report extends scorm_default_report {
 			}
 		}
 
+		$newdata = array();
+		foreach($data as $i => $arr) {
+			$id = $arr['id'];
+			if(isset($newdata[$id])) {
+				foreach($arr['result'] as $value => $frequency) {
+					if(isset($newdata[$id]['result'][$value])) {
+						$newdata[$id]['result'][$value] += $frequency;
+					} else {
+						$newdata[$id]['result'][$value] = $frequency;
+					}
+				}
+			} else {
+				$newdata[$id] = $arr;
+			}
+		}
+		$data = $newdata;
+
 		function compare_interactions($a, $b)
 		{
 			return strcmp($a["id"], $b["id"]);
