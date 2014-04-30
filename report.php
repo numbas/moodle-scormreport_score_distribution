@@ -24,16 +24,31 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/lib/graphlib.php');
 
-/**
- * Main class for the score distribution report
- *
- * @package    scormreport_scoredistribution
- * @copyright  2014 Newcastle University, based on 2013 Ankit Agarwal
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+function fill_axis_increments(&$data) {
+	$increments = array(1,0.5,0.25,0.05,0.01);
+	$g = 1;
+	foreach(array_keys($data) as $x) {
+		foreach($increments as $inc) {
+			if((int)($x*100) % ($inc*100) == 0) {
+				break;
+			}
+		}
+		$g = min($g,$inc);
+	}
+	for($x=0; $x<max(array_keys($data)); $x += $g) {
+		$x = (string)$x;
+		if(!array_key_exists($x,$data)) {
+			$data[$x] = 0;
+		}
+	}
+}
+
+function gcd($a,$b) {
+    return ($a % $b) ? gcd($b,$a % $b) : $b;
+}
 
 function bar_chart($x_data, $y_data, $settings) {
-	$barchart = new graph(min(400,count($x_data)*30+60),100);
+	$barchart = new graph(min(400,count($x_data)*30+60),150);
 	$barchart->parameter = array_merge($barchart->parameter,array('shadow'=>'none','x_label_angle'=>0,'x_grid'=>'none'),$settings);
 
 	$barchart->x_data = $x_data;
@@ -91,6 +106,13 @@ function freq_mean($data) {
 	return $total/$n;
 }
 
+/**
+ * Main class for the score distribution report
+ *
+ * @package    scormreport_scoredistribution
+ * @copyright  2014 Newcastle University, based on 2013 Ankit Agarwal
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class scorm_scoredistribution_report extends scorm_default_report {
 	public function get_sco_summary($sco) {
 		global $DB, $OUTPUT, $PAGE;
@@ -115,6 +137,9 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					}
 					else if ($element=='cmi.score.raw') {
 						$total_scores[] = $value;
+					}
+					else if ($element=='cmi.score.max') {
+						$max_score = $value;
 					}
 					else if (preg_match('/^cmi.interactions.(\d+)/',$element,$matches)) {
 						$i = $matches[1];
@@ -149,7 +174,8 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		$attemptdata = array(
 			'numcomplete' => $numcomplete,
 			'numattempts' => count($attempts),
-			'total_scores' => $total_scores
+			'total_scores' => $total_scores,
+			'max_score' => $max_score
 		);
 		return array($attemptdata,$data);
 	}
@@ -203,10 +229,12 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					ksort($score_frequencies);
 ?>
 	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?>.</p>
-	<p><?php echo get_string('meanscore','scormreport_scoredistribution',array_mean($attemptdata['total_scores'])); ?></p>
+	<p><?php echo get_string('meanscore','scormreport_scoredistribution',number_format(array_mean($attemptdata['total_scores']),2,'.','')); ?></p>
 	<?php echo $OUTPUT->heading('Score distribution',4); ?>
 	<p>Graph of cumulative score distribution</p>
 	<div><?php 
+					fill_axis_increments($score_frequencies);
+					ksort($score_frequencies);
 					$x_data = array_keys($score_frequencies);
 					$y_data = array_values($score_frequencies);
 					$sum = 0;
@@ -214,7 +242,10 @@ class scorm_scoredistribution_report extends scorm_default_report {
 						$sum += $y;
 						$y_data[$i] = $sum;
 					}
-					$chart = new graph(min(400,count($x_data)*30+60),200);
+					foreach($y_data as $i => $y) {
+						$y_data[$i] *= 100/$sum;
+					}
+					$chart = new graph(count($x_data)*30+60,200);
 					$chart->x_data = $x_data;
 					$chart->y_data['line'] = $y_data;
 					$chart->y_format['line'] = array('line' => 'brush', 'brush_size' => 3, 'point' => 'diamond', 'colour' => 'red');
@@ -230,11 +261,12 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					echo draw_graph($chart);
 	?></div>
 <?php
-                    $columns = array('interaction', 'type', 'mean', 'results');
+                    $columns = array('interaction', 'type', 'mean', 'max', 'results');
                     $headers = array(
                         get_string('interaction', 'scormreport_scoredistribution'),
                         get_string('type', 'scormreport_scoredistribution'),
 						get_string('mean', 'scormreport_scoredistribution'),
+						get_string('max', 'scormreport_scoredistribution'),
 						get_string('results', 'scormreport_scoredistribution')
 					);
 
@@ -250,15 +282,18 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
 						$table->setup();
 
+
 						foreach ($tabledata as $interaction => $rowinst) {
 							$sum = $rowinst['result'];
+							fill_axis_increments($sum);
 							ksort($sum);
 							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>'Result','y_label_left'=>'Frequency', 'title' => ""));
 
 							$table->add_data(array(
 								$rowinst['id'],
 								$rowinst['type'],
-								freq_mean($sum),
+								number_format(freq_mean($sum),2,'.',''),
+								max(array_keys($sum)),
 								$barchart
 							));
                         }
