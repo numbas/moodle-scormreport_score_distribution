@@ -10,7 +10,7 @@ Installation Instruction
 
 Credits
 =====================
-Based on moodle-scormreport_trendsreport by Ankit Agarwal
+Based on [moodle-scormreport_trends](https://github.com/ankitagarwal/moodle-scormreport_trends) by Ankit Agarwal
 
 License
 =====================
