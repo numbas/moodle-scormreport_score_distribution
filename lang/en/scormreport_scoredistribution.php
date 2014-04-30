@@ -22,7 +22,15 @@
  */
 
 $string['pluginname'] = 'Score distributions';
-$string['interactionheader'] = 'Interaction';
-$string['interaction'] = 'Interaction {$a}';
+$string['interaction'] = 'Interaction';
 $string['type'] = 'Type';
 $string['results'] = 'Score distribution';
+$string['mean'] = 'Mean';
+$string['min'] = 'Minimum';
+$string['max'] = 'Maximum';
+$string['oneattempt'] = '1 attempt';
+$string['numattempts'] = '{$a} attempts';
+$string['numcomplete'] = '{$a} complete';
+$string['meanscore'] = 'Mean score: {$a}';
+$string['interactionssummary'] = 'Interactions summary';
+$string['scoheading'] = 'SCO: {$a}';

@@ -43,18 +43,52 @@ function bar_chart($x_data, $y_data, $settings) {
 	$y_min = min($y_data);
 	$y_max = max($y_data);
 	$barchart->parameter['y_axis_gridlines'] = max(2,min($y_max-$y_min,6));
-	$barchart->parameter['y_min_left'] = $y_min;
+	$barchart->parameter['y_min_left'] = 0;
 	$barchart->parameter['y_max_left'] = $y_max;
+	return draw_graph($barchart);
+}
 
-	$barchart->init();
-	$barchart->draw_text();
-	$barchart->draw_data();
+function draw_graph($graph) {
+	$graph->init();
+	$graph->draw_text();
+	$graph->draw_data();
 	ob_start();
-	ImagePNG($barchart->image);
+	ImagePNG($graph->image);
 	$imageData = ob_get_contents();
 	ob_end_clean();
 	$data = base64_encode($imageData);
 	return "<img src=\"data:image/png;base64,".$data."\">";
+}
+
+// mean of list of numbers
+function array_mean($data) {
+	if(empty($data)) {
+		return 0;
+	}
+	return array_sum($data)/count($data);
+}
+
+function group($data) {
+	$out = array();
+	foreach ($data as $value) {
+		if(isset($data[$value])) {
+			$out[$value] += 1;
+		} else {
+			$out[$value] = 1;
+		}
+	}
+	return $out;
+}
+
+// mean of value=>frequency array
+function freq_mean($data) {
+	$total = 0;
+	$n = 0;
+	foreach ($data as $result => $frequency) {
+		$total += (float)$result*$frequency;
+		$n += $frequency;
+	}
+	return $total/$n;
 }
 
 class scorm_scoredistribution_report extends scorm_default_report {
@@ -70,10 +104,19 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		$sqlargs = array_merge($this->params, array($sco->id));
 		$attempts = $DB->get_records_sql($select.$from.$where, $sqlargs);
 
+		$numcomplete = 0;
+		$total_scores = array();
+
 		foreach ($attempts as $attempt) {
 			if ($trackdata = scorm_get_tracks($sco->id, $attempt->userid, $attempt->attempt)) {
 				foreach ($trackdata as $element => $value) {
-					if (preg_match('/^cmi.interactions.(\d+)/',$element,$matches)) {
+					if($element=='cmi.completion_status' && $value=='completed') {
+						$numcomplete += 1;
+					}
+					else if ($element=='cmi.score.raw') {
+						$total_scores[] = $value;
+					}
+					else if (preg_match('/^cmi.interactions.(\d+)/',$element,$matches)) {
 						$i = $matches[1];
 						if(!isset($data[$i])) {
 							$data[$i] = array(
@@ -97,7 +140,18 @@ class scorm_scoredistribution_report extends scorm_default_report {
 			}
 		}
 
-		return $data;
+		function compare_interactions($a, $b)
+		{
+			return strcmp($a["id"], $b["id"]);
+		}
+
+		usort($data,'compare_interactions');
+		$attemptdata = array(
+			'numcomplete' => $numcomplete,
+			'numattempts' => count($attempts),
+			'total_scores' => $total_scores
+		);
+		return array($attemptdata,$data);
 	}
 
     /**
@@ -142,44 +196,69 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
             foreach ($scoes as $sco) {
                 if ($sco->launch != '') {
-					echo $OUTPUT->heading($sco->title);
-					$tabledata = $this->get_sco_summary($sco);
-                    $columns = array('question', 'type', 'results');
+					list($attemptdata,$tabledata) = $this->get_sco_summary($sco);
+					echo $OUTPUT->heading(get_string('scoheading','scormreport_scoredistribution',$sco->title));
+
+					$score_frequencies = group($attemptdata['total_scores']);
+					ksort($score_frequencies);
+?>
+	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?>.</p>
+	<p><?php echo get_string('meanscore','scormreport_scoredistribution',array_mean($attemptdata['total_scores'])); ?></p>
+	<?php echo $OUTPUT->heading('Score distribution',4); ?>
+	<p>Graph of cumulative score distribution</p>
+	<div><?php 
+					$x_data = array_keys($score_frequencies);
+					$y_data = array_values($score_frequencies);
+					$sum = 0;
+					foreach($y_data as $i => $y) {
+						$sum += $y;
+						$y_data[$i] = $sum;
+					}
+					$chart = new graph(min(400,count($x_data)*30+60),200);
+					$chart->x_data = $x_data;
+					$chart->y_data['line'] = $y_data;
+					$chart->y_format['line'] = array('line' => 'brush', 'brush_size' => 3, 'point' => 'diamond', 'colour' => 'red');
+					$chart->y_order = array('line');
+					$chart->parameter = array_merge($chart->parameter,array(
+						'title' => '',
+						'shadow' => 'none',
+						'x_label_angle'=>0,
+						'y_min_left' => 0,
+						'y_max_left' => max($y_data),
+						'y_axis_gridlines' => max(2,min(max($y_data),6))
+					));
+					echo draw_graph($chart);
+	?></div>
+<?php
+                    $columns = array('interaction', 'type', 'mean', 'results');
                     $headers = array(
-                        get_string('interactionheader', 'scormreport_scoredistribution'),
+                        get_string('interaction', 'scormreport_scoredistribution'),
                         get_string('type', 'scormreport_scoredistribution'),
+						get_string('mean', 'scormreport_scoredistribution'),
 						get_string('results', 'scormreport_scoredistribution')
 					);
 
                     // Format data for tables and generate output.
                     $formatted_data = array();
-                    if (!empty($tabledata)) {
+					if (!empty($tabledata)) {
+						echo $OUTPUT->heading(get_string('interactionssummary','scormreport_scoredistribution'),3);
 						$table = new flexible_table('mod-scorm-score-distribution-report-'.$sco->id);
 
 						$table->define_columns($columns);
 						$table->define_headers($headers);
 						$table->define_baseurl($PAGE->url);
 
-						// Don't show repeated data.
-						$table->column_suppress('question');
-						$table->column_suppress('element');
-
 						$table->setup();
 
 						foreach ($tabledata as $interaction => $rowinst) {
 							$sum = $rowinst['result'];
-							$topscore = max(array_keys($sum));
-							for($j = 0; $j < $topscore; $j++) {
-								if(!isset($sum[$j])) {
-									$sum[$j] = 0;
-								}
-							}
 							ksort($sum);
 							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>'Result','y_label_left'=>'Frequency', 'title' => ""));
 
 							$table->add_data(array(
 								$rowinst['id'],
 								$rowinst['type'],
+								freq_mean($sum),
 								$barchart
 							));
                         }
