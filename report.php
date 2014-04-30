@@ -245,7 +245,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					foreach($y_data as $i => $y) {
 						$y_data[$i] *= 100/$sum;
 					}
-					$chart = new graph(count($x_data)*30+60,200);
+					$chart = new graph(800,300);
 					$chart->x_data = $x_data;
 					$chart->y_data['line'] = $y_data;
 					$chart->y_format['line'] = array('line' => 'brush', 'brush_size' => 3, 'point' => 'diamond', 'colour' => 'red');
@@ -256,7 +256,9 @@ class scorm_scoredistribution_report extends scorm_default_report {
 						'x_label_angle'=>0,
 						'y_min_left' => 0,
 						'y_max_left' => max($y_data),
-						'y_axis_gridlines' => max(2,min(max($y_data),6))
+						'y_axis_gridlines' => max(2,min(max($y_data),6)),
+						'x_axis_gridlines' => 10,
+						'xDecimal' => 0
 					));
 					echo draw_graph($chart);
 	?></div>
