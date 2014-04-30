@@ -1,5 +1,5 @@
 <?php
-// This file is part of the 
+// This file is part of the SCORM score distributions report for Moodle
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 /**
  * Strings used by the trends scorm report plugin
  *
- * @package    scormreport_score_distributions
+ * @package    scormreport_scoredistribution
  * @copyright  2014 Newcastle University, based on work by Ankit Kumar Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

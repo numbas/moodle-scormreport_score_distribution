@@ -1,5 +1,5 @@
 <?php
-// This file is part of the 
+// This file is part of the SCORM score distributions report for Moodle
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 /**
- * Strings used by the trends scorm report plugin
  *
- * @package    scormreport_score_distributions
+ * @package    scormreport_scoredistribution
  * @copyright  2014 Newcastle University, based on work by Ankit Kumar Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,15 +25,15 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot.'/lib/graphlib.php');
 
 /**
- * Main class for the trends report
+ * Main class for the score distribution report
  *
- * @package    scormreport_trends
- * @copyright  2013 Ankit Agarwal
+ * @package    scormreport_scoredistribution
+ * @copyright  2014 Newcastle University, based on 2013 Ankit Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 function bar_chart($x_data, $y_data, $settings) {
-	$barchart = new graph(count(x_data)*30+60,100);
+	$barchart = new graph(min(400,count($x_data)*30+60),100);
 	$barchart->parameter = array_merge($barchart->parameter,array('shadow'=>'none','x_label_angle'=>0,'x_grid'=>'none'),$settings);
 
 	$barchart->x_data = $x_data;
@@ -58,7 +57,7 @@ function bar_chart($x_data, $y_data, $settings) {
 	return "<img src=\"data:image/png;base64,".$data."\">";
 }
 
-class scorm_trends_report extends scorm_default_report {
+class scorm_scoredistribution_report extends scorm_default_report {
 	public function get_sco_summary($sco) {
 		global $DB, $OUTPUT, $PAGE;
 
@@ -102,7 +101,7 @@ class scorm_trends_report extends scorm_default_report {
 	}
 
     /**
-     * Displays the trends report
+     * Displays the score distribution report
      *
      * @param stdClass $scorm full SCORM object
      * @param stdClass $cm - full course_module object
@@ -147,15 +146,15 @@ class scorm_trends_report extends scorm_default_report {
 					$tabledata = $this->get_sco_summary($sco);
                     $columns = array('question', 'type', 'results');
                     $headers = array(
-                        get_string('interactionheader', 'scormreport_trends'),
-                        get_string('type', 'scormreport_trends'),
-						get_string('results', 'scormreport_trends')
+                        get_string('interactionheader', 'scormreport_scoredistribution'),
+                        get_string('type', 'scormreport_scoredistribution'),
+						get_string('results', 'scormreport_scoredistribution')
 					);
 
                     // Format data for tables and generate output.
                     $formatted_data = array();
                     if (!empty($tabledata)) {
-						$table = new flexible_table('mod-scorm-trends-report-'.$sco->id);
+						$table = new flexible_table('mod-scorm-score-distribution-report-'.$sco->id);
 
 						$table->define_columns($columns);
 						$table->define_headers($headers);
