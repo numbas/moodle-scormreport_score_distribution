@@ -48,7 +48,7 @@ function gcd($a,$b) {
 }
 
 function bar_chart($x_data, $y_data, $settings) {
-	$barchart = new graph(min(400,count($x_data)*30+60),150);
+	$barchart = new graph(min(400,count($x_data)*60+60),150);
 	$barchart->parameter = array_merge($barchart->parameter,array('shadow'=>'none','x_label_angle'=>0,'x_grid'=>'none'),$settings);
 
 	$barchart->x_data = $x_data;
@@ -287,7 +287,6 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
 						foreach ($tabledata as $interaction => $rowinst) {
 							$sum = $rowinst['result'];
-							fill_axis_increments($sum);
 							ksort($sum);
 							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>'Result','y_label_left'=>'Frequency', 'title' => ""));
 
