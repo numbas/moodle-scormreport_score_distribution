@@ -248,7 +248,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					$chart = new graph(800,300);
 					$chart->x_data = $x_data;
 					$chart->y_data['line'] = $y_data;
-					$chart->y_format['line'] = array('line' => 'brush', 'brush_size' => 3, 'point' => 'diamond', 'colour' => 'red');
+					$chart->y_format['line'] = array('line' => 'brush', 'brush_size' => 3, 'point' => 'none', 'colour' => 'red');
 					$chart->y_order = array('line');
 					$chart->parameter = array_merge($chart->parameter,array(
 						'title' => '',
