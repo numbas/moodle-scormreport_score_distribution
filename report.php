@@ -24,6 +24,19 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/lib/graphlib.php');
 
+function nice_number_format($n) {
+	$n = number_format((float)$n,2,'.','');
+	if(preg_match('/(\d+)\.(\d*[1-9])?0+$/',$n,$matches)) {
+		if(array_key_exists(2,$matches)) {
+			return $matches[1].".".$matches[2];
+		} else {
+			return $matches[1];
+		}
+	} else {
+		return $n;
+	}
+}
+
 function fill_axis_increments(&$data) {
 	$increments = array(1,0.5,0.25,0.05,0.01);
 	$g = 1;
@@ -52,7 +65,7 @@ function bar_chart($x_data, $y_data, $settings) {
 	$barchart->parameter = array_merge($barchart->parameter,array('shadow'=>'none','x_label_angle'=>0,'x_grid'=>'none'),$settings);
 
 	foreach($x_data as $i => $val) {
-		$x_data[$i] = number_format($val,2,'.','');
+		$x_data[$i] = nice_number_format($val);
 	}
 	$num = array_sum($y_data);
 	foreach($y_data as $i => $val) {
@@ -252,7 +265,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					$percent_complete = (int)(100*$attemptdata['numcomplete']/$attemptdata['numattempts']);
 ?>
 	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?> (<?php echo $percent_complete ?>%).</p>
-	<p><?php echo get_string('meanscore','scormreport_scoredistribution',number_format(array_mean($attemptdata['total_scores']),2,'.','')); ?></p>
+	<p><?php echo get_string('meanscore','scormreport_scoredistribution',nice_number_format(array_mean($attemptdata['total_scores']),2,'.','')); ?></p>
 	<?php echo $OUTPUT->heading(get_string('results','scormreport_scoredistribution'),4); ?>
 	<div><?php 
 					fill_axis_increments($score_frequencies);
@@ -317,7 +330,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 							$table->add_data(array(
 								$rowinst['id'],
 								$rowinst['type'],
-								number_format(freq_mean($sum),2,'.',''),
+								nice_number_format(freq_mean($sum),2,'.',''),
 								max(array_keys($sum)),
 								$barchart
 							));
