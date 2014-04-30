@@ -54,8 +54,9 @@ function bar_chart($x_data, $y_data, $settings) {
 	foreach($x_data as $i => $val) {
 		$x_data[$i] = number_format($val,2,'.','');
 	}
+	$num = array_sum($y_data);
 	foreach($y_data as $i => $val) {
-		$y_data[$i] = 100*$val/count($y_data);
+		$y_data[$i] = 100*$val/$num;
 	}
 	$barchart->x_data = $x_data;
 	$barchart->y_data['bars'] = $y_data;
