@@ -4,7 +4,7 @@ SCORM score distributions report for Moodle
 Installation Instruction
 =====================
 
-* Clone or extract this repository into moodle/mod/scorm/report/trends
+* Clone or extract this repository into `moodle/mod/scorm/report/trends`
 * Login as admin and go to site admin>notifications and upgrade the database
 
 
