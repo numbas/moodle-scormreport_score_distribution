@@ -15,4 +15,4 @@ Based on [moodle-scormreport_trends](https://github.com/ankitagarwal/moodle-scor
 License
 =====================
 
-GPL 3
+&copy; 2014 Newcastle University, released under the [GPL 3 licence](https://tldrlegal.com/license/gnu-general-public-license-v3-(gpl-3)).
