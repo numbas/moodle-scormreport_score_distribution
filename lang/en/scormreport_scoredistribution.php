@@ -21,7 +21,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'Score distributions';
+$string['pluginname'] = 'Item analysis';
 $string['interaction'] = 'Interaction';
 $string['type'] = 'Type';
 $string['results'] = 'Score distribution';
@@ -31,10 +31,12 @@ $string['max'] = 'Maximum score';
 $string['oneattempt'] = '1 attempt';
 $string['numattempts'] = '{$a} attempts';
 $string['numcomplete'] = '{$a} complete';
-$string['meanscore'] = 'Mean score: {$a}';
+$string['meanscore'] = 'Mean score: {$a->mean} ({$a->percent}%)';
 $string['interactionssummary'] = 'Interactions summary';
 $string['scoheading'] = 'SCO: {$a}';
 $string['percentexceeding'] = '% of attempts achieving this score';
 $string['score'] = 'Score';
 $string['frequencypercent'] = 'Frequency (%)';
 $string['result'] = 'Result';
+$string['discriminationindex'] = 'Discrimination Index';
+$string['discriminationindexexplanation'] = 'The discrimination index is the Pearson product-moment correlation coefficient between the score for the interaction and the total score for all other interactions.';

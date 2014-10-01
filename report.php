@@ -136,6 +136,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		global $DB, $OUTPUT, $PAGE;
 
 		// Construct the SQL.
+		// get all attempts for this sco belonging to users defined in $usql
 		$select = 'SELECT DISTINCT '.$DB->sql_concat('st.userid', '\'#\'', 'COALESCE(st.attempt, 0)').' AS uniqueid, ';
 		$select .= 'st.userid AS userid, st.scormid AS scormid, st.attempt AS attempt, st.scoid AS scoid ';
 		$from = 'FROM {scorm_scoes_track} st ';
@@ -144,18 +145,35 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		$sqlargs = array_merge($this->params, array($sco->id));
 		$attempts = $DB->get_records_sql($select.$from.$where, $sqlargs);
 
+		// number of completed attempts
 		$numcomplete = 0;
+
+		// each attempt's total score
 		$total_scores = array();
 
+		// for computing the discrimination index
+		$attempt_scores = array(
+			'total' => array(), 		// for each attempt, student's total score
+			'interactions' => array(), 	// for each interaction, each student's score
+			'other' => array(), 		// for each interaction, each student's total score for everything else (total attempt score minus score for this)
+			'discrimination' => array()	// for each interaction, the discrimination index
+		);
+		$attempt_acc = 0;
+
 		foreach ($attempts as $attempt) {
+			// get trackdata for this attempt
 			if ($trackdata = scorm_get_tracks($sco->id, $attempt->userid, $attempt->attempt)) {
 				foreach ($trackdata as $element => $value) {
+					// count number of completed attempts
 					if($element=='cmi.completion_status' && $value=='completed') {
 						$numcomplete += 1;
 					}
+					// keep track of each attempt's total score
 					else if ($element=='cmi.score.raw') {
 						$total_scores[] = $value;
+						$attempt_scores['total'][$attempt_acc] = $value;
 					}
+					// keep track of max score available for this SCO
 					else if ($element=='cmi.score.max') {
 						$max_score = $value;
 					}
@@ -167,26 +185,67 @@ class scorm_scoredistribution_report extends scorm_default_report {
 								'id' => '',
 								'result' => array());
 						}
+						// record type of interaction (should be the same for each attempt)
 						if($element=="cmi.interactions.$i.type") {
 							$data[$i]['type'] = $value;
+						// record interaction id
 						} else if($element=="cmi.interactions.$i.id") {
 							$data[$i]['id'] = $value;
+						// count number of attempts reaching each score value
 						} else if($element=="cmi.interactions.$i.result") {
 							if (isset($data[$i]['result'][$value])) {
 								$data[$i]['result'][$value]++;
 							} else {
 								$data[$i]['result'][$value] = 1;
 							}
+							if(!isset($attempt_scores['interactions'][$i])) {
+								$attempt_scores['interactions'][$i] = array();
+							}
+							$attempt_scores['interactions'][$i][$attempt_acc] = $value;
 						}
 					}
 				}
+				$attempt_acc += 1;
 			}
 		}
 
+		// compute means for each interaction and the corresponding total-from-other-interactions score
+		$means = array();
+		$other_means = array();
+		foreach($attempt_scores['interactions'] as $interaction=>$values) {
+			$numattempts = count($values);
+			for($i=0;$i<$numattempts;$i++) {
+				$means[$interaction]+=$values[$i]/$numattempts;
+				$other = $attempt_scores['total'][$i]-$values[$i];
+				$other_means[$interaction] += $other/$numattempts;
+				$attempt_scores['other'][$interaction][] = $other;
+			}
+		}
+
+		// compute the discrimination index 
+		foreach($attempt_scores['interactions'] as $interaction=>$values) {
+			$diff_interactions_sum = 0; // sum (interaction_score - interaction_mean)
+			$diff_others_sum = 0;		// sum (other_score - other_mean)
+			$prod_diffs_sum = 0;		// sum of the products of the above differences
+
+			for($i=0;$i<$numattempts;$i++) {
+				$diff_interaction = $values[$i] - $means[$interaction];
+				$diff_other = $attempt_scores['other'][$interaction][$i] - $other_means[$interaction];
+
+				$diff_interactions_sum += $diff_interaction*$diff_interaction;
+				$diff_others_sum += $diff_other*$diff_other;
+				$prod_diffs_sum += $diff_other*$diff_interaction;
+			}
+
+			$attempt_scores['discrimination'][$interaction] = $prod_diffs_sum/sqrt($diff_others_sum*$diff_interactions_sum);
+		}
+
+		// collect together summary stats for each interaction
 		$newdata = array();
 		foreach($data as $i => $arr) {
 			$id = $arr['id'];
 			if(isset($newdata[$id])) {
+				// sum frequencies for each result
 				foreach($arr['result'] as $value => $frequency) {
 					if(isset($newdata[$id]['result'][$value])) {
 						$newdata[$id]['result'][$value] += $frequency;
@@ -197,6 +256,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 			} else {
 				$newdata[$id] = $arr;
 			}
+			$newdata[$id]['discrimination'] = $attempt_scores['discrimination'][$i];
 		}
 		$data = $newdata;
 
@@ -205,7 +265,10 @@ class scorm_scoredistribution_report extends scorm_default_report {
 			return strcmp($a["id"], $b["id"]);
 		}
 
+		// sort interactions by their id
 		usort($data,'compare_interactions');
+
+		// collect summary statistics about all attempts
 		$attemptdata = array(
 			'numcomplete' => $numcomplete,
 			'numattempts' => count($attempts),
@@ -257,15 +320,16 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
             foreach ($scoes as $sco) {
                 if ($sco->launch != '') {
-					list($attemptdata,$tabledata) = $this->get_sco_summary($sco);
+					list($attemptdata,$tabledata,$attempt_scores) = $this->get_sco_summary($sco);
 					echo $OUTPUT->heading(get_string('scoheading','scormreport_scoredistribution',$sco->title));
 
 					$score_frequencies = group($attemptdata['total_scores']);
 					ksort($score_frequencies);
 					$percent_complete = (int)(100*$attemptdata['numcomplete']/$attemptdata['numattempts']);
+					$mean_score = array_mean($attemptdata['total_scores']);
 ?>
 	<p><?php echo get_string($attemptdata['numattempts']==1 ? 'oneattempt' : 'numattempts','scormreport_scoredistribution',$attemptdata['numattempts']); ?>, of which <?php echo get_string('numcomplete','scormreport_scoredistribution',$attemptdata['numcomplete']); ?> (<?php echo $percent_complete ?>%).</p>
-	<p><?php echo get_string('meanscore','scormreport_scoredistribution',nice_number_format(array_mean($attemptdata['total_scores']),2,'.','')); ?></p>
+	<p><?php echo get_string('meanscore','scormreport_scoredistribution',array('mean' => nice_number_format($mean_score,2,'.',''),'percent' => round(100*$mean_score/$attemptdata['max_score']))); ?></p>
 	<?php echo $OUTPUT->heading(get_string('results','scormreport_scoredistribution'),4); ?>
 	<div><?php 
 					fill_axis_increments($score_frequencies);
@@ -300,19 +364,23 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					echo draw_graph($chart);
 	?></div>
 <?php
-                    $columns = array('interaction', 'type', 'mean', 'max', 'results');
+                    $columns = array('interaction', 'type', 'mean', 'max', 'results','discrimination');
                     $headers = array(
                         get_string('interaction', 'scormreport_scoredistribution'),
                         get_string('type', 'scormreport_scoredistribution'),
 						get_string('mean', 'scormreport_scoredistribution'),
 						get_string('max', 'scormreport_scoredistribution'),
-						get_string('results', 'scormreport_scoredistribution')
+						get_string('results', 'scormreport_scoredistribution'),
+						get_string('discriminationindex','scormreport_scoredistribution')
 					);
 
                     // Format data for tables and generate output.
                     $formatted_data = array();
 					if (!empty($tabledata)) {
 						echo $OUTPUT->heading(get_string('interactionssummary','scormreport_scoredistribution'),3);
+?>
+	<p><?php echo get_string('discriminationindexexplanation','scormreport_scoredistribution'); ?></p>
+<?php
 						$table = new flexible_table('mod-scorm-score-distribution-report-'.$sco->id);
 
 						$table->define_columns($columns);
@@ -327,12 +395,24 @@ class scorm_scoredistribution_report extends scorm_default_report {
 							ksort($sum);
 							$barchart = bar_chart(array_keys($sum), array_values($sum),array('x_label'=>get_string('result','scormreport_scoredistribution'),'y_label_left'=>get_string('frequencypercent','scormreport_scoredistribution'), 'title' => ""));
 
+							$mean_score = freq_mean($sum);
+							$max_score = max(array_keys($sum));
+
+							$discrimination = nice_number_format($rowinst['discrimination']);
+							// style the discrimination index if it's too low
+							if($discrimination<0) {
+								$discrimination = "<strong>$discrimination</strong>";
+							} else if($discrimination<0.3) {
+								$discrimination = "<em>$discrimination</em>";
+							}
+
 							$table->add_data(array(
 								$rowinst['id'],
 								$rowinst['type'],
-								nice_number_format(freq_mean($sum),2,'.',''),
-								max(array_keys($sum)),
-								$barchart
+								sprintf('%s (%s%%)',nice_number_format($mean_score,2,'.',''),round(100*$mean_score/$max_score)),
+								$max_score,
+								$barchart,
+								$discrimination
 							));
                         }
                         $table->finish_output();
