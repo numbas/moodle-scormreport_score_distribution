@@ -104,7 +104,7 @@ function array_mean($data) {
 function group($data) {
 	$out = array();
 	foreach ($data as $value) {
-		if(isset($data[$value])) {
+		if(isset($out[$value])) {
 			$out[$value] += 1;
 		} else {
 			$out[$value] = 1;
@@ -213,10 +213,13 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		$means = array();
 		$other_means = array();
 		foreach($attempt_scores['interactions'] as $interaction=>$values) {
+			$means[$interaction] = 0;
+			$other_means[$interaction] = 0;
 			$numattempts = count($values);
 			for($i=0;$i<$numattempts;$i++) {
-				$means[$interaction]+=$values[$i]/$numattempts;
-				$other = $attempt_scores['total'][$i]-$values[$i];
+				$score = @$values[$i] ?: 0;
+				$means[$interaction]+=$score/$numattempts;
+				$other = $attempt_scores['total'][$i]-$score;
 				$other_means[$interaction] += $other/$numattempts;
 				$attempt_scores['other'][$interaction][] = $other;
 			}
@@ -320,7 +323,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
             foreach ($scoes as $sco) {
                 if ($sco->launch != '') {
-					list($attemptdata,$tabledata,$attempt_scores) = $this->get_sco_summary($sco);
+					list($attemptdata,$tabledata) = $this->get_sco_summary($sco);
 					echo $OUTPUT->heading(get_string('scoheading','scormreport_scoredistribution',$sco->title));
 
 					$score_frequencies = group($attemptdata['total_scores']);
