@@ -161,6 +161,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		$attempt_acc = 0;
 
 		foreach ($attempts as $attempt) {
+			$attempt_interactions = array();
 			// get trackdata for this attempt
 			if ($trackdata = scorm_get_tracks($sco->id, $attempt->userid, $attempt->attempt)) {
 				foreach ($trackdata as $element => $value) {
@@ -179,30 +180,51 @@ class scorm_scoredistribution_report extends scorm_default_report {
 					}
 					else if (preg_match('/^cmi.interactions.(\d+)/',$element,$matches)) {
 						$i = $matches[1];
-						if(!isset($data[$i])) {
-							$data[$i] = array(
+						if(!isset($attempt_interactions[$i])) {
+							$attempt_interactions[$i] = array(
 								'type' => '',
 								'id' => '',
-								'result' => array());
+								'result' => 0
+							);
 						}
 						// record type of interaction (should be the same for each attempt)
 						if($element=="cmi.interactions.$i.type") {
-							$data[$i]['type'] = $value;
+							$attempt_interactions[$i]['type'] = $value;
 						// record interaction id
 						} else if($element=="cmi.interactions.$i.id") {
-							$data[$i]['id'] = $value;
+							$attempt_interactions[$i]['id'] = $value;
 						// count number of attempts reaching each score value
 						} else if($element=="cmi.interactions.$i.result") {
-							if (isset($data[$i]['result'][$value])) {
-								$data[$i]['result'][$value]++;
-							} else {
-								$data[$i]['result'][$value] = 1;
-							}
-							if(!isset($attempt_scores['interactions'][$i])) {
-								$attempt_scores['interactions'][$i] = array();
-							}
-							$attempt_scores['interactions'][$i][$attempt_acc] = $value;
+							$attempt_interactions[$i]['result'] = $value;
 						}
+					}
+				}
+
+				foreach($attempt_interactions as $interaction) {
+					$id = $interaction['id'];
+
+					if(!isset($data[$id])) {
+						$data[$id] = array(
+							'type' => $interaction['type'],
+							'result' => array()
+						);
+					}
+
+					$result = $interaction['result'];
+					if(isset($data[$id]['result'][$result])) {
+						$data[$id]['result'][$result] += 1;
+					} else {
+						$data[$id]['result'][$result] = 1;
+					}
+
+					if(!isset($attempt_scores['interactions'][$id])) {
+						$attempt_scores['interactions'][$id] = array();
+					}
+
+					if(isset($attempt_scores['interactions'][$id][$attempt_acc])) {
+						$attempt_scores['interactions'][$id][$attempt_acc] = max($attempt_scores['interactions'][$id][$attempt_acc],$result);
+					} else {
+						$attempt_scores['interactions'][$id][$attempt_acc] = $result;
 					}
 				}
 				$attempt_acc += 1;
@@ -212,64 +234,43 @@ class scorm_scoredistribution_report extends scorm_default_report {
 		// compute means for each interaction and the corresponding total-from-other-interactions score
 		$means = array();
 		$other_means = array();
-		foreach($attempt_scores['interactions'] as $interaction=>$values) {
-			$means[$interaction] = 0;
-			$other_means[$interaction] = 0;
+		foreach($attempt_scores['interactions'] as $id=>$values) {
+			$means[$id] = 0;
+			$other_means[$id] = 0;
 			$numattempts = count($values);
 			for($i=0;$i<$numattempts;$i++) {
-				$score = @$values[$i] ?: 0;
-				$means[$interaction]+=$score/$numattempts;
-				$other = $attempt_scores['total'][$i]-$score;
-				$other_means[$interaction] += $other/$numattempts;
-				$attempt_scores['other'][$interaction][] = $other;
+				if(isset($attempt_scores['total'][$i])) {
+					$score = @$values[$i] ?: 0;
+					$means[$id]+=$score/$numattempts;
+					$other = $attempt_scores['total'][$i]-$score;
+					$other_means[$id] += $other/$numattempts;
+					$attempt_scores['other'][$id][$i] = $other;
+				}
 			}
 		}
 
 		// compute the discrimination index 
-		foreach($attempt_scores['interactions'] as $interaction=>$values) {
+		foreach($attempt_scores['interactions'] as $id=>$values) {
 			$diff_interactions_sum = 0; // sum (interaction_score - interaction_mean)
 			$diff_others_sum = 0;		// sum (other_score - other_mean)
 			$prod_diffs_sum = 0;		// sum of the products of the above differences
 
 			for($i=0;$i<$numattempts;$i++) {
-				$diff_interaction = $values[$i] - $means[$interaction];
-				$diff_other = $attempt_scores['other'][$interaction][$i] - $other_means[$interaction];
+				if(isset($values[$i]) && isset($attempt_scores['total'][$i])) {
+					$diff_interaction = $values[$i] - $means[$id];
+					$diff_other = $attempt_scores['other'][$id][$i] - $other_means[$id];
 
-				$diff_interactions_sum += $diff_interaction*$diff_interaction;
-				$diff_others_sum += $diff_other*$diff_other;
-				$prod_diffs_sum += $diff_other*$diff_interaction;
-			}
-
-			$attempt_scores['discrimination'][$interaction] = $prod_diffs_sum/sqrt($diff_others_sum*$diff_interactions_sum);
-		}
-
-		// collect together summary stats for each interaction
-		$newdata = array();
-		foreach($data as $i => $arr) {
-			$id = $arr['id'];
-			if(isset($newdata[$id])) {
-				// sum frequencies for each result
-				foreach($arr['result'] as $value => $frequency) {
-					if(isset($newdata[$id]['result'][$value])) {
-						$newdata[$id]['result'][$value] += $frequency;
-					} else {
-						$newdata[$id]['result'][$value] = $frequency;
-					}
+					$diff_interactions_sum += $diff_interaction*$diff_interaction;
+					$diff_others_sum += $diff_other*$diff_other;
+					$prod_diffs_sum += $diff_other*$diff_interaction;
 				}
-			} else {
-				$newdata[$id] = $arr;
 			}
-			$newdata[$id]['discrimination'] = $attempt_scores['discrimination'][$i];
-		}
-		$data = $newdata;
 
-		function compare_interactions($a, $b)
-		{
-			return strcmp($a["id"], $b["id"]);
+			$data[$id]['discrimination'] = $prod_diffs_sum/sqrt($diff_others_sum*$diff_interactions_sum);
 		}
 
 		// sort interactions by their id
-		usort($data,'compare_interactions');
+		ksort($data);
 
 		// collect summary statistics about all attempts
 		$attemptdata = array(
@@ -410,7 +411,7 @@ class scorm_scoredistribution_report extends scorm_default_report {
 							}
 
 							$table->add_data(array(
-								$rowinst['id'],
+								$interaction,
 								$rowinst['type'],
 								sprintf('%s (%s%%)',nice_number_format($mean_score,2,'.',''),round(100*$mean_score/$max_score)),
 								$max_score,
