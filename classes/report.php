@@ -131,7 +131,7 @@ function freq_mean($data) {
  * @copyright  2014 Newcastle University, based on 2013 Ankit Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class scorm_scoredistribution_report extends scorm_default_report {
+class report extends mod_scorm\report {
 	public function get_sco_summary($sco) {
 		global $DB, $OUTPUT, $PAGE;
 
@@ -266,7 +266,11 @@ class scorm_scoredistribution_report extends scorm_default_report {
 				}
 			}
 
-			$data[$id]['discrimination'] = $prod_diffs_sum/sqrt($diff_others_sum*$diff_interactions_sum);
+			if($diff_others_sum*$diff_interactions_sum==0) {
+				$data[$id]['discrimination'] = 0;
+			} else {
+				$data[$id]['discrimination'] = $prod_diffs_sum/sqrt($diff_others_sum*$diff_interactions_sum);
+			}
 		}
 
 		// sort interactions by their id
@@ -401,6 +405,11 @@ class scorm_scoredistribution_report extends scorm_default_report {
 
 							$mean_score = freq_mean($sum);
 							$max_score = max(array_keys($sum));
+							if($max_score!=0) {
+								$mean_percentage = round(100*$mean_score/$max_score);
+							} else {
+								$mean_percentage = 0;
+							}
 
 							$discrimination = nice_number_format($rowinst['discrimination']);
 							// style the discrimination index if it's too low
@@ -410,10 +419,11 @@ class scorm_scoredistribution_report extends scorm_default_report {
 								$discrimination = "<em>$discrimination</em>";
 							}
 
+
 							$table->add_data(array(
 								$interaction,
 								$rowinst['type'],
-								sprintf('%s (%s%%)',nice_number_format($mean_score,2,'.',''),round(100*$mean_score/$max_score)),
+								sprintf('%s (%s%%)',nice_number_format($mean_score,2,'.',''),$mean_percentage),
 								$max_score,
 								$barchart,
 								$discrimination
